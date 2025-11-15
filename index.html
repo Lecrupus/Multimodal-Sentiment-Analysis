@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Modal Sentiment Analysis</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; background: #f4f4f4; }
+        h1, h2 { text-align: center; color: #333; }
+        .container { max-width: 800px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .module { margin-bottom: 30px; border-bottom: 1px solid #ddd; padding-bottom: 20px; }
+        h3 { color: #0056b3; }
+        form { display: flex; flex-direction: column; }
+        textarea { width: 98%; padding: 10px; margin-bottom: 10px; }
+        input[type="file"] { margin-bottom: 10px; }
+        button { background: #007bff; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { background: #e9f5ff; border: 1px solid #b3d7ff; padding: 15px; margin-top: 15px; border-radius: 4px; }
+        .code-toggle { background: #6c757d; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-size: 0.8em; }
+        pre { background: #2b2b2b; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Multi-Modal Sentiment Analysis</h1>
+
+        <div class="module">
+            <h3>1. Text Sentiment Analysis</h3>
+            <form action="/analyze_text" method="POST">
+                <textarea name="text_input" rows="4" placeholder="Enter text to analyze...">{{ original_text or '' }}</textarea>
+                <button type="submit">Analyze Text</button>
+            </form>
+            {% if text_result %}
+            <div class="result">
+                <strong>Result:</strong> {{ text_result | safe }}
+            </div>
+            {% endif %}
+            <button class="code-toggle" onclick="toggleCode('text-code')">Show/Hide Code</button>
+            <pre id="text-code"><code># --- Text Analysis Code (from cell 65ed0661) ---
+from transformers import pipeline
+
+print("Loading sentiment analysis model...")
+sentiment_pipeline = pipeline("sentiment-analysis")
+print("Model loaded successfully.")
+
+text_to_analyze = "This is the text from the user"
+results = sentiment_pipeline(text_to_analyze)
+
+print(f"Sentiment: {results[0]['label']}")
+print(f"Score: {results[0]['score']:.4f}")
+            </code></pre>
+        </div>
+
+        <div class="module">
+            <h3>2. Image Emotion Analysis</h3>
+            <form action="/analyze_image" method="POST" enctype="multipart/form-data">
+                <label>Upload an image (jpg, png):</label>
+                <input type="file" name="file_input" accept="image/*">
+                <button type="submit">Analyze Image</button>
+            </form>
+            {% if image_result %}
+            <div class="result">
+                {% if image_file %}<strong>File:</strong> {{ image_file }}<br>{% endif %}
+                <strong>Result:</strong><br>{{ image_result | safe }}
+            </div>
+            {% endif %}
+            <button class="code-toggle" onclick="toggleCode('image-code')">Show/Hide Code</button>
+            <pre id="image-code"><code># --- Image Analysis Code (from cell 5ae15c95) ---
+from deepface import DeepFace
+import cv2
+
+file_name = "path/to/uploaded_image.jpg"
+img = cv2.imread(file_name)
+
+analysis = DeepFace.analyze(img_path = file_name, actions = ['emotion'])
+
+dominant_emotion = analysis[0]['dominant_emotion']
+print(f"Dominant Emotion: {dominant_emotion}")
+print("--- Full Emotion Analysis ---")
+print(analysis[0]['emotion'])
+            </code></pre>
+        </div>
+
+        <div class="module">
+            <h3>3. Audio Emotion Analysis</h3>
+            <form action="/analyze_audio" method="POST" enctype="multipart/form-data">
+                <label>Upload an audio file (wav, mp3):</label>
+                <input type="file" name="file_input" accept="audio/*">
+                <button type="submit">Analyze Audio</button>
+            </form>
+            {% if audio_result %}
+            <div class="result">
+                {% if audio_file %}<strong>File:</strong> {{ audio_file }}<br>{% endif %}
+                <strong>Result:</strong><br>{{ audio_result | safe }}
+            </div>
+            {% endif %}
+            <button class="code-toggle" onclick="toggleCode('audio-code')">Show/Hide Code</button>
+            <pre id="audio-code"><code># --- Audio Analysis Code (from cell 64b2ff82) ---
+from transformers import pipeline
+import librosa
+
+file_name = "path/to/uploaded_audio.wav"
+
+speech_array, sampling_rate = librosa.load(file_name, sr=16000)
+
+emotion_classifier = pipeline("audio-classification", model="superb/wav2vec2-base-superb-er")
+
+results = emotion_classifier(speech_array)
+
+print("--- Emotion Analysis Results (from Tone) ---")
+for result in results:
+    print(f"Emotion: {result['label']}, Score: {result['score']:.4f}")
+            </code></pre>
+        </div>
+
+        <div class="module">
+            <h3>4. Video Emotion Analysis (Warning: Slow!)</h3>
+            <form action="/analyze_video" method="POST" enctype="multipart/form-data">
+                <label>Upload a video file (mp4, mov):</label>
+                <input type="file" name="file_input" accept="video/*">
+                <button type="submit">Analyze Video</button>
+            </form>
+            {% if video_result %}
+            <div class="result">
+                {% if video_file %}<strong>File:</strong> {{ video_file }}<br>{% endif %}
+                <strong>Result:</strong><br>{{ video_result | safe }}
+            </div>
+            {% endif %}
+            <button class="code-toggle" onclick="toggleCode('video-code')">Show/Hide Code</button>
+            <pre id="video-code"><code># --- Video Analysis Code (from cell f46b9aae) ---
+import cv2
+from deepface import DeepFace
+import collections
+
+file_name = "path/to/uploaded_video.mp4"
+cap = cv2.VideoCapture(file_name)
+frame_rate = cap.get(cv2.CAP_PROP_FPS)
+frame_skip_interval = int(frame_rate)
+frame_count = 0
+detected_emotions = []
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    if frame_count % frame_skip_interval == 0:
+        try:
+            analysis = DeepFace.analyze(frame,
+                                        actions=['emotion'],
+                                        enforce_detection=False)
+            if analysis and isinstance(analysis, list):
+                detected_emotions.append(analysis[0]['dominant_emotion'])
+        except Exception as e:
+            pass
+    frame_count += 1
+
+cap.release()
+
+if detected_emotions:
+    emotion_counts = collections.Counter(detected_emotions)
+    print("Dominant emotions found in the video:")
+    for emotion, count in emotion_counts.most_common():
+        print(f"- {emotion}: {count} times")
+            </code></pre>
+        </div>
+
+    </div>
+
+    <script>
+        function toggleCode(id) {
+            var el = document.getElementById(id);
+            if (el.style.display === 'block') {
+                el.style.display = 'none';
+            } else {
+                el.style.display = 'block';
+            }
+        }
+    </script>
+
+</body>
+</html>

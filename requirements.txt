@@ -1,0 +1,9 @@
+# File: requirements.txt
+Flask
+deepface
+transformers
+torch
+datasets
+librosa
+soundfile
+opencv-python-headless
