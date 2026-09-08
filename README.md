@@ -1,15 +1,3 @@
----
-title: Multimodal Sentiment Analysis
-emoji: "\U0001F3AD"
-colorFrom: indigo
-colorTo: purple
-sdk: docker
-app_port: 7860
-pinned: false
-license: mit
-short_description: Sentiment from text, faces, voice and video
----
-
 # Multimodal Sentiment Analysis
 
 Reads sentiment from four sources — written text, facial expression, tone of
@@ -199,35 +187,10 @@ name; see `.env.example`. The ones worth knowing:
 
 ---
 
-## Deployment
+## Running it elsewhere
 
-### Hugging Face Spaces (recommended)
-
-The frontmatter at the top of this file already configures a Docker Space on
-port 7860. Create a **Docker** Space, then push this directory to it:
-
-```bash
-git remote add space https://huggingface.co/spaces/<user>/<space-name>
-```
-
-```bash
-git push space main
-```
-
-The build installs ffmpeg and bakes the model weights into the image, so the
-first request does not wait on ~700 MB of downloads. Expect 15–25 minutes for
-the initial build.
-
-### Not Vercel
-
-Vercel's Python functions cap at **500 MB**; torch + tensorflow + deepface is
-roughly **7.9 GB**, so the build fails with `Total bundle size exceeds the
-maximum function size`. No configuration avoids this — the platform is built
-for short-lived, small functions, not multi-gigabyte ML runtimes. Use a
-container host instead. If a `vercel.app` URL matters, deploy the model API to
-a Space and host only a static front end on Vercel that calls it.
-
-### Docker anywhere
+The app is a normal Flask service, so any host that can run a container works.
+There is a `Dockerfile`, a `Procfile` and `gunicorn.conf.py` in the repo.
 
 ```bash
 docker build -t sentiment .
@@ -237,29 +200,30 @@ docker build -t sentiment .
 docker run -p 7860:7860 sentiment
 ```
 
-Render, Railway, Fly.io and Cloud Run all take this image directly. Give the
-instance at least **2 GB RAM** — Render's 512 MB free tier is not enough.
+### What will not work
 
-### Windows, without Docker
+| Host | Why |
+| --- | --- |
+| Vercel, Netlify | 500 MB function limit; this stack is ~7.9 GB |
+| Render free tier | 512 MB RAM; the models alone need ~1.5 GB |
+| Hugging Face Spaces | Creating Docker/Gradio Spaces now requires PRO ($9/mo). ZeroGPU, the remaining free tier, only runs Gradio |
 
-```powershell
-waitress-serve --listen=0.0.0.0:8000 wsgi:app
-```
+Hosts that do work: Google Cloud Run (free tier, scales to zero, ~30-90 s cold
+start), Render or Railway on a paid instance, Fly.io, or any VPS. Give it at
+least **2 GB RAM**.
 
 ### Production notes
 
 - **Set `SECRET_KEY`.** The default is a development placeholder.
 - `gunicorn.conf.py` uses threads rather than many processes: each worker loads
   its own copy of the models, so workers are expensive in RAM. Budget roughly
-  1.5–2 GB per worker.
+  1.5-2 GB per worker.
 - The request timeout is 1800s because video analysis is genuinely slow. Put a
   reverse proxy in front with a matching timeout.
 - Jobs are held **in memory**, so they do not survive a restart and do not work
   across multiple machines. For multi-instance deployments, move the job
   registry in `app.py` to Redis or a database.
 - Uploads are deleted as soon as analysis finishes.
-
----
 
 ## Tests
 
