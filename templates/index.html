@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Multimodal Sentiment Analysis</title>
+  <meta name="description" content="Read sentiment and emotion from text, images, audio and video — and fuse them into one verdict.">
+  <meta property="og:title" content="Multimodal Sentiment Analysis">
+  <meta property="og:description" content="Sentiment from what is written, shown, heard and filmed.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎭</text></svg>">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div>
+      <div class="brand">
+        <div class="brand-mark">🎭</div>
+        <h1>Multimodal Sentiment Analysis</h1>
+      </div>
+      <p class="tagline">
+        Reads sentiment from what is written, shown, heard and filmed — then fuses
+        every signal into a single verdict with the evidence behind it.
+      </p>
+      <div class="badges">
+        <span class="badge {{ 'on' if ffmpeg else 'off' }}"><i class="dot"></i>
+          {{ 'audio decoding ready' if ffmpeg else 'ffmpeg missing' }}
+        </span>
+        <span class="badge {{ 'on' if asr_enabled else 'off' }}"><i class="dot"></i>
+          {{ 'transcription on' if asr_enabled else 'transcription off' }}
+        </span>
+        <span class="badge">max {{ max_upload_mb }} MB</span>
+        <span class="badge" id="badge-models">models idle</span>
+      </div>
+    </div>
+    <div class="head-actions">
+      <button class="icon-btn" id="history-btn" title="Recent analyses" aria-label="Recent analyses">🕘</button>
+      <button class="icon-btn" id="theme-toggle" title="Toggle theme" aria-label="Toggle colour theme">◐</button>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true"  data-panel="text"><span class="ico">✍️</span><span class="txt">Text</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-panel="image"><span class="ico">🖼️</span><span class="txt">Image</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-panel="audio"><span class="ico">🎙️</span><span class="txt">Audio</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-panel="video"><span class="ico">🎬</span><span class="txt">Video</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-panel="combined"><span class="ico">🧩</span><span class="txt">Combined</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-panel="history"><span class="ico">🕘</span><span class="txt">History</span></button>
+  </div>
+
+  <!-- ---------------- TEXT ---------------- -->
+  <section class="panel active" id="panel-text" role="tabpanel">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Text sentiment</h2>
+          <p class="hint">Passages longer than the model's window are split into overlapping
+            chunks and recombined, weighted by length — not truncated.</p>
+        </div>
+      </div>
+      <textarea id="text-input" placeholder="Paste a review, message or transcript…"></textarea>
+      <div class="chip-row" id="text-samples"></div>
+      <div class="row">
+        <button class="primary" id="text-go">Analyse text</button>
+        <button class="ghost" id="text-clear">Clear</button>
+        <span class="counter spacer" id="text-count">0 words</span>
+      </div>
+      <div class="result" id="text-result"></div>
+    </div>
+  </section>
+
+  <!-- ---------------- IMAGE ---------------- -->
+  <section class="panel" id="panel-image" role="tabpanel">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Facial emotion</h2>
+          <p class="hint">Every detected face is scored and weighted by size and detection
+            confidence. Detectors are trained on photographs — cartoons and drawings are
+            usually not detected at all.</p>
+        </div>
+      </div>
+      <label class="drop" id="image-drop" tabindex="0">
+        <div class="big">🖼️</div>
+        <div class="label">Drop an image or click to browse</div>
+        <div class="sub">PNG, JPG, BMP or WEBP</div>
+        <input type="file" id="image-file" accept="image/*">
+      </label>
+      <div class="preview" id="image-preview"></div>
+      <div class="row"><button class="primary" id="image-go" disabled>Analyse image</button></div>
+      <div class="result" id="image-result"></div>
+    </div>
+  </section>
+
+  <!-- ---------------- AUDIO ---------------- -->
+  <section class="panel" id="panel-audio" role="tabpanel">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Vocal emotion</h2>
+          <p class="hint">Audio is cut into overlapping windows, near-silence is dropped,
+            and each window is weighted by loudness.</p>
+        </div>
+      </div>
+      <label class="drop" id="audio-drop" tabindex="0">
+        <div class="big">🎙️</div>
+        <div class="label">Drop audio or click to browse</div>
+        <div class="sub">WAV, MP3, M4A, FLAC or OGG</div>
+        <input type="file" id="audio-file" accept="audio/*">
+      </label>
+      <div class="preview" id="audio-preview"></div>
+      <div class="row"><button class="primary" id="audio-go" disabled>Analyse audio</button></div>
+      <div class="result" id="audio-result"></div>
+    </div>
+  </section>
+
+  <!-- ---------------- VIDEO ---------------- -->
+  <section class="panel" id="panel-video" role="tabpanel">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Video sentiment</h2>
+          <p class="hint">Frames are sampled evenly across the whole clip under a fixed
+            budget, then combined with the audio track.</p>
+        </div>
+      </div>
+      <label class="drop" id="video-drop" tabindex="0">
+        <div class="big">🎬</div>
+        <div class="label">Drop a video or click to browse</div>
+        <div class="sub">MP4, MOV, AVI, MKV or WEBM</div>
+        <input type="file" id="video-file" accept="video/*">
+      </label>
+      <div class="preview" id="video-preview"></div>
+      <div class="row"><button class="primary" id="video-go" disabled>Analyse video</button></div>
+      <div class="progress" id="video-progress">
+        <div class="progress-track"><div class="progress-fill" id="video-progress-fill"></div></div>
+        <div class="progress-msg"><span id="video-progress-msg">Starting…</span><span id="video-progress-pct"></span></div>
+      </div>
+      <div class="result" id="video-result"></div>
+    </div>
+  </section>
+
+  <!-- ---------------- COMBINED ---------------- -->
+  <section class="panel" id="panel-combined" role="tabpanel">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Combined verdict</h2>
+          <p class="hint">Runs every input you supply, then fuses them — weighted by each
+            modality's importance and by how decisive it was. Disagreement is reported,
+            not hidden.</p>
+        </div>
+      </div>
+      <textarea id="combo-text" placeholder="Optional text…"></textarea>
+      <div class="row" style="margin-top:14px">
+        <button class="ghost" id="combo-pick-image">🖼️ Image</button>
+        <button class="ghost" id="combo-pick-audio">🎙️ Audio</button>
+        <button class="ghost" id="combo-pick-video">🎬 Video</button>
+        <input type="file" id="combo-image" accept="image/*" hidden>
+        <input type="file" id="combo-audio" accept="audio/*" hidden>
+        <input type="file" id="combo-video" accept="video/*" hidden>
+        <span class="counter spacer" id="combo-files">nothing attached</span>
+      </div>
+      <div class="row"><button class="primary" id="combo-go">Analyse everything</button></div>
+      <div class="progress" id="combo-progress">
+        <div class="progress-track"><div class="progress-fill" id="combo-progress-fill"></div></div>
+        <div class="progress-msg"><span id="combo-progress-msg">Working…</span><span id="combo-progress-pct"></span></div>
+      </div>
+      <div class="result" id="combo-result"></div>
+    </div>
+  </section>
+
+  <!-- ---------------- HISTORY ---------------- -->
+  <section class="panel" id="panel-history" role="tabpanel">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Recent analyses</h2>
+          <p class="hint">Stored in this browser only — never uploaded. Click any row to
+            reopen its full result.</p>
+        </div>
+        <button class="ghost" id="history-clear">Clear all</button>
+      </div>
+      <div class="history-list" id="history-list"></div>
+      <div class="result" id="history-result"></div>
+    </div>
+  </section>
+
+  <footer>
+    Facial emotion via DeepFace · vocal emotion via wav2vec2 · text sentiment via transformers<br>
+    Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to analyse · <kbd>1</kbd>–<kbd>6</kbd> to switch tabs
+  </footer>
+</div>
+
+<div class="toasts" id="toasts"></div>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

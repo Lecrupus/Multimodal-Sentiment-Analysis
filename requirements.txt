@@ -1,0 +1,27 @@
+# Web
+Flask>=3.0,<4
+python-dotenv>=1.0
+gunicorn>=21.2 ; sys_platform != "win32"
+waitress>=3.0 ; sys_platform == "win32"
+
+# Text + audio models
+transformers>=4.40
+torch>=2.2
+librosa>=0.10
+soundfile>=0.12
+
+# Ships a static ffmpeg binary, so compressed audio (m4a/aac, ogg, mp3) and
+# video sound tracks decode without a system ffmpeg install. Note that files
+# are often misnamed: WhatsApp exports MPEG-4/AAC audio with a .mp3 extension.
+imageio-ffmpeg>=0.4.9
+
+# Face emotion. deepface pulls in tensorflow; tf-keras provides the Keras 2
+# API that deepface still expects on top of Keras 3.
+deepface>=0.0.93
+tf-keras>=2.16
+
+# opencv 5.x dropped the bundled haarcascade XML files that deepface's default
+# face detector loads from cv2.data.haarcascades, so stay on the 4.x line.
+opencv-python>=4.8,<5
+
+numpy>=1.24
