@@ -7,7 +7,7 @@ sdk: docker
 app_port: 7860
 pinned: false
 license: mit
-short_description: Sentiment from text, faces, voice and video, fused into one verdict.
+short_description: Sentiment from text, faces, voice and video
 ---
 
 # Multimodal Sentiment Analysis
