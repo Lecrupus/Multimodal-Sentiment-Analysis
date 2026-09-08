@@ -1,6 +1,5 @@
 ---
 title: Multimodal Sentiment Analysis
-emoji: 🎭
 colorFrom: indigo
 colorTo: purple
 sdk: docker
